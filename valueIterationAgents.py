@@ -61,9 +61,20 @@ class ValueIterationAgent(ValueEstimationAgent):
 
     def runValueIteration(self):
         # Write value iteration code here
-        "*** YOUR CODE HERE ***"
-
-
+        for _ in range(self.iterations):
+            states = self.mdp.getStates()
+            new_values = util.Counter()
+            for s in states:
+                if(self.mdp.isTerminal(s)):
+                    new_values[s] = 0
+                else:
+                    actions = self.mdp.getPossibleActions(s)
+                    maxQ = float('-inf')
+                    for a in actions:
+                        maxQ = max(maxQ, self.getQValue(s, a))
+                    new_values[s] = maxQ
+            self.values = new_values.copy()
+        
     def getValue(self, state):
         """
           Return the value of the state (computed in __init__).
@@ -76,8 +87,11 @@ class ValueIterationAgent(ValueEstimationAgent):
           Compute the Q-value of action in state from the
           value function stored in self.values.
         """
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        probs = self.mdp.getTransitionStatesAndProbs(state, action)
+        sum_probs = 0
+        for (nextState, prob) in probs:
+            sum_probs += prob * (self.mdp.getReward(state, action, nextState) + self.discount*self.values[nextState])
+        return sum_probs
 
     def computeActionFromValues(self, state):
         """
@@ -88,8 +102,13 @@ class ValueIterationAgent(ValueEstimationAgent):
           there are no legal actions, which is the case at the
           terminal state, you should return None.
         """
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        if(self.mdp.isTerminal(state)):
+            return None
+        actions = self.mdp.getPossibleActions(state)
+        QValues = util.Counter()
+        for a in actions:
+            QValues[a] = self.getQValue(state, a)
+        return QValues.argMax()
 
     def getPolicy(self, state):
         return self.computeActionFromValues(state)
@@ -129,7 +148,19 @@ class AsynchronousValueIterationAgent(ValueIterationAgent):
         ValueIterationAgent.__init__(self, mdp, discount, iterations)
 
     def runValueIteration(self):
-        "*** YOUR CODE HERE ***"
+        states = self.mdp.getStates()
+        i = 0
+        for _ in range(self.iterations):
+            s = states[i % len(states)]
+            if(self.mdp.isTerminal(s)):
+                self.values[s] = 0
+            else:
+                actions = self.mdp.getPossibleActions(s)
+                maxQ = float('-inf')
+                for a in actions:
+                    maxQ = max(maxQ, self.getQValue(s, a))
+                self.values[s] = maxQ
+            i += 1
 
 class PrioritizedSweepingValueIterationAgent(AsynchronousValueIterationAgent):
     """

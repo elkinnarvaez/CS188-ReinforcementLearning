@@ -177,8 +177,45 @@ class PrioritizedSweepingValueIterationAgent(AsynchronousValueIterationAgent):
           and then act according to the resulting policy.
         """
         self.theta = theta
+        self.predecessors = dict()
+        for s in mdp.getStates():
+            self.predecessors[s] = set()
         ValueIterationAgent.__init__(self, mdp, discount, iterations)
 
     def runValueIteration(self):
-        "*** YOUR CODE HERE ***"
+        # Compute predecessors of all states
+        states = self.mdp.getStates()
+        for state in states:
+            for state_pred in states:
+                actions = self.mdp.getPossibleActions(state_pred)
+                for a in actions:
+                    probs = self.mdp.getTransitionStatesAndProbs(state_pred, a)
+                    for (nextState, prob) in probs:
+                        if(prob > 0 and nextState == state):
+                            self.predecessors[state].add(state_pred)
 
+        # Initialize empty priority queue
+        q = util.PriorityQueue()
+
+        # Iterate over non terminan states
+        for state in states:
+            if(not self.mdp.isTerminal(state)):
+                actions = self.mdp.getPossibleActions(state)
+                diff = abs(self.getValue(state) - max(self.getQValue(state, a) for a in actions))
+                q.push(state, -1*diff)
+        i = 0
+        while(i < self.iterations and not q.isEmpty()):
+            s = q.pop()
+            # Update value of s
+            if(not self.mdp.isTerminal(s)):
+                actions = self.mdp.getPossibleActions(s)
+                maxQ = float('-inf')
+                for a in actions:
+                    maxQ = max(maxQ, self.getQValue(s, a))
+                self.values[s] = maxQ
+            for p in self.predecessors[s]:
+                actions = self.mdp.getPossibleActions(p)
+                diff = abs(self.getValue(p) - max(self.getQValue(p, a) for a in actions))
+                if(diff > self.theta):
+                    q.update(p, -1*diff)
+            i += 1
